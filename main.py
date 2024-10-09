@@ -115,5 +115,5 @@ if __name__ == '__main__':
     # twilio client
     client = Client(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
 
-    app.run()
+    app.run(host="0.0.0.0")
     # app.run(port = os.getenv("PORT") or 4000, host="0.0.0.0")
