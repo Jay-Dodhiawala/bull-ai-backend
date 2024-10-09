@@ -11,3 +11,4 @@ langchain-qdrant
 qdrant-client
 tiktoken
 twilio
+gunicorn
