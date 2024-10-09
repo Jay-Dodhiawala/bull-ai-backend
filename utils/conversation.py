@@ -28,8 +28,9 @@ def get_conversation_chain(vectorstore:QdrantVectorStore, company_name:str):
         kwargs={"filter": lambda doc: doc.metadata.get("company") == company_name}
     )
 
-    prompt_template = """Use the following pieces of context to answer the question at the end. If you don't find the answer in the context, use your general knowledge to provide a response.
+    prompt_template = """Use the following pieces of context to answer the question at the end. If you don't find the answer in the context, use your general knowledge to provide a response be concise.
     NOTE - This is for Indian stock markets only so use the currency properly number system is in lakhs and crores. And let me know if oyu used context or general knowledge to answer the question.
+    CHARACTER LIMIT - 1000 characters only.
 
     Context: {context}
 
