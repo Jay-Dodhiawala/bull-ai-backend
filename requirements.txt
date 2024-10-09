@@ -1,0 +1,13 @@
+openai
+Flask
+python-dotenv
+pdfminer.six
+beautifulsoup4
+requests
+langchain
+langchain-community
+langchain-openai
+langchain-qdrant
+qdrant-client
+tiktoken
+twilio
