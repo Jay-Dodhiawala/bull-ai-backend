@@ -40,4 +40,4 @@ if __name__ == '__main__':
     client = create_db_client()
     vectorstore = create_vector_store(client, os.getenv("QDRANT_COLLECTION_NAME"))
 
-    app.run()
+    app.run(port = os.getenv("PORT") or 4000, host="0.0.0.0")
