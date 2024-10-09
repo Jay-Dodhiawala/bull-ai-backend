@@ -18,6 +18,7 @@ def hello_world_2():
     bot_res = MessagingResponse()
     msg = bot_res.message()
     msg.body("hiiiiiiiiiii")
+    print(request.get_json())
     return str(bot_res)
 
 @app.route('/chat', methods=['POST'])
