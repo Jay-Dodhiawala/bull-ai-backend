@@ -14,6 +14,8 @@ import os
 
 load_dotenv()
 
+# print(os.getenv("PPXL_API_KEY"))
+
 llm = ChatPerplexity(
     temperature=0, 
     pplx_api_key=os.getenv("PPXL_API_KEY"), 
