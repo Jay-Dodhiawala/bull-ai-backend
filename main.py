@@ -34,7 +34,7 @@ def handle_message():
         user_states[sender] = {'step': 'company_name'}
         send_message(client, sender, "Welcome! Please enter the company name:")
     elif user_states[sender]['step'] == 'company_name':
-        user_states[sender]['company_name'] = incoming_msg
+        user_states[sender]['company_name'] = incoming_msg.upper()
         user_states[sender]['step'] = 'question'
         send_message(client, sender, f"Company name set to {incoming_msg}. Now, please enter your question:")
     elif user_states[sender]['step'] == 'question':
@@ -42,7 +42,7 @@ def handle_message():
         question = incoming_msg
         
         # Generate response using your existing function
-        response = generate_response(question, company_name, vectorstore)
+        response = generate_response(question, company_name.upper(), vectorstore)
 
         split_response = text_splitter(response, 1400)
 

@@ -134,7 +134,8 @@ def handle_conversation(conversation, user_question: str, company_name: str):
         user_question = f"Regarding {company_name}, {user_question}"
 
     retriever_output = conversation.retriever.invoke(user_question)[:3]
-    
+    # print(user_question,company_name, len(retriever_output))
+    print(retriever_output)
     if not retriever_output:
         return f"I'm sorry, but I don't have any specific information about {company_name} in my database. Could you please ask a more general question?"
     
