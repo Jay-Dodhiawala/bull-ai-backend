@@ -1,6 +1,6 @@
 from flask import Flask, request
 from routes.GetResponse import generate_response
-from utils.database_utils import create_db_client, create_vector_store, add_documents
+from utils.database_utils import create_db_client, create_vector_store
 import os
 from utils.my_tools import text_splitter
 from utils.messaging_utils import send_message, send_template_message
@@ -139,7 +139,7 @@ def handle_message():
 if __name__ == '__main__':
     # connect to db
     db_client = create_db_client()
-    vectorstore = create_vector_store(db_client, os.getenv("QDRANT_COLLECTION_NAME"))
+    vectorstore = create_vector_store(db_client)
 
     # twilio client
     client = Client(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
