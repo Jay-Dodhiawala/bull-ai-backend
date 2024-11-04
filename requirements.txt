@@ -13,6 +13,7 @@ qdrant-client
 tiktoken
 twilio
 gunicorn
+supabase
 
 # New requirements for Google Slides integration
 google-auth
