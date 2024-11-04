@@ -1,3 +1,4 @@
+# Existing requirements
 openai
 Flask
 python-dotenv
@@ -12,3 +13,9 @@ qdrant-client
 tiktoken
 twilio
 gunicorn
+
+# New requirements for Google Slides integration
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+google-api-python-client

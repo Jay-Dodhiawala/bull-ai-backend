@@ -2,78 +2,37 @@ from flask import Flask, request
 from routes.GetResponse import generate_response
 from utils.database_utils import create_db_client, create_vector_store, add_documents
 import os
+import logging
+import requests
 from utils.my_tools import text_splitter
 from utils.messaging_utils import send_message, send_template_message
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
-import os
+from services.google_slides.slides_generator import GoogleSlidesGenerator
 from dotenv import load_dotenv
-
+from pathlib import Path
 from classes.CustomDictClass import ActiveUserDictionary
+from prompts import PROMPT_TEMPLATES, STANDARD_PROMPTS
+
+# Set up minimal logging
+logging.basicConfig(
+    level=logging.ERROR,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
 user_states = ActiveUserDictionary()
+slides_generator = None
 
 app = Flask(__name__)
-
-# Define your prompts
-PROMPT_TEMPLATES = {
-    "latestresults": """Extract the latest financial results for {company_name} and present it in a well formatted manner. Use Exactly the template below.
-
-Revenue: (JUST NUMBER)
-Y-o-Y: (ONLY PERCENTAGE)
-Q-o-Q: (ONLY PERCENTAGE)
-
-Expenses:(JUST NUMBER)
-Y-o-Y: (ONLY PERCENTAGE)
-Q-o-Q: (ONLY PERCENTAGE)
-
-EBITDA:(JUST NUMBER)
-Y-o-Y: (ONLY PERCENTAGE)
-Q-o-Q: (ONLY PERCENTAGE)
-
-PBT:(JUST NUMBER)
-Y-o-Y: (ONLY PERCENTAGE)
-Q-o-Q: (ONLY PERCENTAGE)
-
-PAT:(JUST NUMBER)
-Y-o-Y: (ONLY PERCENTAGE)
-Q-o-Q: (ONLY PERCENTAGE)
-
-Operating Profit Margins:(ONLY PERCENTAGE)
-Current Operating Profit Margin: (ONLY PERCENTAGE)
-Last Quarter Operating Profit Margin: (ONLY PERCENTAGE)
-Last Year Operating Profit Margin: (ONLY PERCENTAGE)
-
-Net Profit Margins:(ONLY PERCENTAGE)
-Current Net Profit Margin: (ONLY PERCENTAGE)
-Last Quarter Net Profit Margin: (ONLY PERCENTAGE)
-Last Year Net Profit Margin:(ONLY PERCENTAGE) """,
-
-    "orderbook": """Extract the latest order book for {company_name}. Present the information in the following format:
-
-Latest Order book value (Date: )
-QoQ Growth:
-YoY Growth:
-
-Details about the Orderbook:
-• 
-• 
-• 
-
-Additional Information:
-- Current Capacity
-- Approximate timeline to complete current order book"""
-}
-
-STANDARD_PROMPTS = ["latestresults", "orderbook"]
 
 @app.route('/')
 def hello_world():
     bot_res = MessagingResponse()
     msg = bot_res.message()
-    msg.body("hiiiiiiiiiii")
+    msg.body("Welcome to Indian Markets Bot!")
     return str(bot_res)
 
 @app.route('/', methods=['POST'])
@@ -82,66 +41,80 @@ def handle_message():
     sender = request.form['From']
     
     if sender not in user_states:
-        user_states[sender] = {'step': 'company_name'}
-        send_message(client, sender, "Welcome! Please enter the company name:")
+        user_states[sender] = {'step': 'initial_choice'}
+        send_message(client, sender, "Would you like to ask about a company or general market questions? (Reply with 'company' or 'general')")
+    
+    elif user_states[sender]['step'] == 'initial_choice':
+        if incoming_msg == 'company':
+            user_states[sender]['step'] = 'company_name'
+            send_message(client, sender, "Please enter the company name:")
+        else:
+            user_states[sender]['step'] = 'general_question'
+            response = generate_response(incoming_msg, None, vectorstore)
+            split_response = text_splitter(response, 1400)
+            for doc in split_response:
+                send_message(client, sender, doc.page_content)
+            send_message(client, sender, "\nWould you like to ask another question about the market, or type 'company' to analyze a specific company?")
+    
+    elif user_states[sender]['step'] == 'general_question':
+        if incoming_msg == 'company':
+            user_states[sender]['step'] = 'company_name'
+            send_message(client, sender, "Please enter the company name:")
+        else:
+            response = generate_response(incoming_msg, None, vectorstore)
+            split_response = text_splitter(response, 1400)
+            for doc in split_response:
+                send_message(client, sender, doc.page_content)
+            send_message(client, sender, "\nWould you like to ask another question about the market, or type 'company' to analyze a specific company?")
     
     elif user_states[sender]['step'] == 'company_name':
-        user_states[sender]['company_name'] = incoming_msg
+        company_name = incoming_msg
+        user_states[sender]['company_name'] = company_name
         user_states[sender]['step'] = 'list_selection'
-        
-        # Send instructions first
-        send_message(client, sender, f"Company set to: {incoming_msg}\n\nYou can either:\n1. Select from standard prompts below\n2. Type your own question about the company")
-        
-        # Send the template message with the list picker
+        send_message(client, sender, f"Company set to: {company_name}")
         send_template_message(
             client,
             sender,
-            'HX623b152c22cb64952ea34cf4d01e71f5',
-            None  # Removed parameters
+            'HX4db0e22ee90f7a8236dcd3badcc4b44f',
+            None
         )
     
     elif user_states[sender]['step'] == 'list_selection':
         company_name = user_states[sender]['company_name']
         
         if incoming_msg in STANDARD_PROMPTS:
-            # Handle standard prompts
             prompt = PROMPT_TEMPLATES[incoming_msg].format(company_name=company_name)
             response = generate_response(prompt, company_name, vectorstore)
+            split_response = text_splitter(response, 1400)
+            for doc in split_response:
+                send_message(client, sender, doc.page_content)
         else:
-            # Handle custom question
             response = generate_response(incoming_msg, company_name, vectorstore)
+            split_response = text_splitter(response, 1400)
+            for doc in split_response:
+                send_message(client, sender, doc.page_content)
         
-        # Split and send the response
-        split_response = text_splitter(response, 1400)
-        for doc in split_response:
-            send_message(client, sender, doc.page_content)
-        
-        # Ask if they want to continue
+        send_message(client, sender, "\nContinue with the current conversation, or would you like to change your company?")
         user_states[sender]['step'] = 'continue_choice'
-        send_message(client, sender, "\n\nReply 'yes' to continue or 'no' to start over with a new company.")
     
     elif user_states[sender]['step'] == 'continue_choice':
-        if incoming_msg == 'yes':
+        if incoming_msg in ['change', 'change company', 'new company']:
+            user_states[sender] = {'step': 'initial_choice'}
+            send_message(client, sender, "Would you like to ask about a company or general market questions? (Reply with 'company' or 'general')")
+        else:
             user_states[sender]['step'] = 'list_selection'
-            send_message(client, sender, f"You can either:\n1. Select from standard prompts below\n2. Type your own question about {user_states[sender]['company_name']}")
             send_template_message(
                 client,
                 sender,
-                'HX623b152c22cb64952ea34cf4d01e71f5',
-                None  # Removed parameters
+                'HX4db0e22ee90f7a8236dcd3badcc4b44f',
+                None
             )
-        else:
-            user_states[sender] = {'step': 'company_name'}
-            send_message(client, sender, "Alright, let's start over. Please enter a new company name:")
 
     return '', 200
 
 if __name__ == '__main__':
-    # connect to db
     db_client = create_db_client()
     vectorstore = create_vector_store(db_client, os.getenv("QDRANT_COLLECTION_NAME"))
-
-    # twilio client
     client = Client(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
-
+    slides_generator = GoogleSlidesGenerator()
     app.run(port = os.getenv("PORT") or 4000, host="0.0.0.0")
