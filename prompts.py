@@ -77,14 +77,17 @@ or
 
 Only give the required template answer, don't explain yourself""",
 
-    "general_market": """Use your market knowledge and the provided context to answer questions about the Indian equities market. Be concise and accurate.
-Focus on providing data-driven responses using reliable financial sources. Include relevant market statistics when available.
-Use Indian currency (₹) and number formats (lakhs, crores) appropriately.
+    "general_market": """You are a financial expert specializing in Indian markets. Answer questions about the Indian equities market using your knowledge and real-time data.
 
-Context: {context}
+Rules:
+1. Use Indian currency (₹) and number formats (lakhs, crores)
+2. Be concise but comprehensive
+3. Structure responses clearly
+4. Include specific numbers and percentages when relevant
+
 Question: {question}
 
-Provide a structured, clear response with factual information."""
+Answer: """
 }
 
 # List of available standard prompts

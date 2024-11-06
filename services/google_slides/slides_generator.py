@@ -53,7 +53,7 @@ class GoogleSlidesGenerator:
 
             # Cleanup - Delete the presentation after exporting
             self.drive_service.files().delete(fileId=presentation_id).execute()
-
+            print (response)
             return response
 
         except Exception as e:

@@ -11,6 +11,8 @@ from langchain.retrievers.document_compressors import LLMChainExtractor
 from dotenv import load_dotenv
 import os
 
+from prompts import PROMPT_TEMPLATES
+
 load_dotenv()
 
 llm = ChatPerplexity(
@@ -32,16 +34,8 @@ def get_conversation_chain(vectorstore: SupabaseVectorStore, company_name: str =
 
         Answer: """
     else:
-        # General market prompt
-        prompt_template = """Use the following pieces of context to answer the question about the Indian stock market. If you don't find the answer in the context, use your general knowledge about Indian markets to provide a response.
-        NOTE - This is for Indian stock markets only so use the currency properly number system is in lakhs and crores. And let me know if you used context or general knowledge to answer the question.
-        CHARACTER LIMIT - 1000 characters only.
-
-        Context: {context}
-
-        Question: {question}
-
-        Answer: """
+        # Use the general_market prompt from PROMPT_TEMPLATES
+        prompt_template = PROMPT_TEMPLATES["general_market"]
 
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
     retriever = vectorstore.as_retriever()

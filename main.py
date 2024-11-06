@@ -23,10 +23,14 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-user_states = ActiveUserDictionary()
+user_states = None
 slides_generator = None
 
 app = Flask(__name__)
+
+def initialize_states():
+    global user_states
+    user_states = ActiveUserDictionary()
 
 @app.route('/')
 def hello_world():
@@ -69,10 +73,17 @@ def handle_message():
                 split_response = text_splitter(response, 1400)
                 for doc in split_response:
                     send_message(client, sender, doc.page_content)
+                # Send template message after successful response
+                send_template_message(
+                    client,
+                    sender,
+                    'HXba7ea9a0c5fd3d0c25bdd922593394f6',
+                    None
+                )
+                user_states[sender]['step'] = 'continue_choice'
             except Exception as e:
                 logger.error(f"Error generating response: {str(e)}")
                 send_message(client, sender, "I apologize, but I encountered an error processing your request. Please try again.")
-            send_message(client, sender, "\nWould you like to ask another question about the market, or type 'company' to analyze a specific company?")
     
     elif user_states[sender]['step'] == 'company_name':
         company_name = incoming_msg
@@ -109,7 +120,12 @@ def handle_message():
                 logger.error(f"Error generating response: {str(e)}")
                 send_message(client, sender, "I apologize, but I encountered an error processing your request. Please try again.")
         
-        send_message(client, sender, "\nContinue with the current conversation, or would you like to change your company?")
+        send_template_message(
+            client,
+            sender,
+            'HXba7ea9a0c5fd3d0c25bdd922593394f6',
+            None
+        )
         user_states[sender]['step'] = 'continue_choice'
     
     elif user_states[sender]['step'] == 'continue_choice':
@@ -122,19 +138,26 @@ def handle_message():
                 None
             )
         else:
-            user_states[sender]['step'] = 'list_selection'
-            send_template_message(
-                client,
-                sender,
-                'HX4db0e22ee90f7a8236dcd3badcc4b44f',
-                None
-            )
+            if 'company_name' in user_states[sender]:
+                user_states[sender]['step'] = 'list_selection'
+                send_template_message(
+                    client,
+                    sender,
+                    'HX4db0e22ee90f7a8236dcd3badcc4b44f',
+                    None
+                )
+            else:
+                user_states[sender]['step'] = 'general_question'
+                send_message(client, sender, "What would you like to know about the Indian markets?")
 
     return '', 200
 
 if __name__ == '__main__':
     db_client = create_db_client()
     vectorstore = create_vector_store(db_client)
+
+    # Initialize states
+    initialize_states()
 
     # twilio client
     client = Client(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
