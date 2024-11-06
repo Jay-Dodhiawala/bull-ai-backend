@@ -1,6 +1,6 @@
 from flask import Flask, request
 from routes.GetResponse import generate_response
-from utils.database_utils import create_db_client, create_vector_store, add_documents
+from utils.database_utils import create_db_client, create_vector_store
 import os
 from utils.my_tools import text_splitter
 from utils.messaging_utils import send_message
@@ -34,7 +34,7 @@ def handle_message():
         user_states[sender] = {'step': 'company_name'}
         send_message(client, sender, "Welcome! Please enter the company name:")
     elif user_states[sender]['step'] == 'company_name':
-        user_states[sender]['company_name'] = incoming_msg
+        user_states[sender]['company_name'] = incoming_msg.upper()
         user_states[sender]['step'] = 'question'
         send_message(client, sender, f"Company name set to {incoming_msg}. Now, please enter your question:")
     elif user_states[sender]['step'] == 'question':
@@ -42,7 +42,7 @@ def handle_message():
         question = incoming_msg
         
         # Generate response using your existing function
-        response = generate_response(question, company_name, vectorstore)
+        response = generate_response(question, company_name.upper(), vectorstore)
 
         split_response = text_splitter(response, 1400)
 
@@ -67,7 +67,7 @@ if __name__ == '__main__':
     
     # connect to db
     db_client = create_db_client()
-    vectorstore = create_vector_store(db_client, os.getenv("QDRANT_COLLECTION_NAME"))
+    vectorstore = create_vector_store(db_client)
 
     # twilio client
     client = Client(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))

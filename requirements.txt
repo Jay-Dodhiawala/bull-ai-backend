@@ -12,3 +12,4 @@ qdrant-client
 tiktoken
 twilio
 gunicorn
+supabase
