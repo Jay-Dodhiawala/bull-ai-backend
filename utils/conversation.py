@@ -2,6 +2,7 @@ from langchain_community.chat_models import ChatPerplexity
 from langchain.chains import ConversationalRetrievalChain
 from langchain.prompts import PromptTemplate
 from langchain.memory import ConversationBufferMemory
+from langchain.chains import LLMChain
 
 from typing import Any
 from langchain_community.vectorstores import SupabaseVectorStore
@@ -22,6 +23,9 @@ llm = ChatPerplexity(
 )
 
 def get_conversation_chain(vectorstore: SupabaseVectorStore, company_name: str = None):
+    # Initialize memory first
+    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+    
     if company_name:
         # Company-specific prompt
         prompt_template = """Use the following pieces of context to answer the question at the end. If you don't find the answer in the context, use your general knowledge to provide a response be concise.
@@ -33,21 +37,28 @@ def get_conversation_chain(vectorstore: SupabaseVectorStore, company_name: str =
         Question: {question}
 
         Answer: """
+        prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
+        
+        # Use retriever only for company-specific questions
+        retriever = vectorstore.as_retriever()
+        conversation_chain = ConversationalRetrievalChain.from_llm(
+            llm=llm,
+            retriever=retriever,
+            memory=memory,
+            combine_docs_chain_kwargs={"prompt": prompt}
+        )
     else:
-        # Use the general_market prompt from PROMPT_TEMPLATES
+        # For general market questions, use a simple chain without retriever
         prompt_template = PROMPT_TEMPLATES["general_market"]
-
-    prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
-    retriever = vectorstore.as_retriever()
-
-    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        prompt = PromptTemplate(template=prompt_template, input_variables=["question"])
+        
+        # Use a simple chain for general market questions
+        conversation_chain = LLMChain(
+            llm=llm,
+            prompt=prompt,
+            memory=memory
+        )
     
-    conversation_chain = ConversationalRetrievalChain.from_llm(
-        llm=llm,
-        retriever=retriever,
-        memory=memory,
-        combine_docs_chain_kwargs={"prompt": prompt}
-    )
     return conversation_chain
 
 def handle_conversation(conversation: Any, user_question: str, company_name: str = None):
@@ -59,6 +70,11 @@ def handle_conversation(conversation: Any, user_question: str, company_name: str
         # For general market questions
         if not any(term in user_question.lower() for term in ['market', 'nifty', 'sensex', 'india', 'indian']):
             user_question = f"Regarding the Indian stock market, {user_question}"
-        
-    response = conversation.invoke({'question': user_question})
-    return response['answer']
+    
+    # Handle different chain types
+    if isinstance(conversation, ConversationalRetrievalChain):
+        response = conversation.invoke({'question': user_question})
+        return response['answer']
+    else:
+        response = conversation.invoke({'question': user_question})
+        return response['text']

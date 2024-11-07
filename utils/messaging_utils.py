@@ -18,13 +18,12 @@ def send_template_message(client, to, template_sid, parameters=None):
     """
     try:
         message = client.messages.create(
+            content_sid=template_sid,
             from_='whatsapp:+14155238886',
-            to=to,
-            content_sid=template_sid
+            to=to
         )
         return message.sid
     except Exception as e:
         print(f"Error sending template message: {str(e)}")
-        # Fallback to regular message
-        return send_message(client, to, 
-            "Please select from these options:\n1. latestresults\n2. orderbook\nor type your own question")
+        # Send a generic error message instead of the options
+        return send_message(client, to, "I apologize for the technical difficulty. Please try your request again.")
