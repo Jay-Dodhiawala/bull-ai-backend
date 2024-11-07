@@ -14,6 +14,8 @@ tiktoken
 twilio
 gunicorn
 supabase
+markdown
+uuid
 
 # New requirements for Google Slides integration
 google-auth

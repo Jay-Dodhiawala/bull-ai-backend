@@ -5,14 +5,15 @@ import os
 import logging
 import requests
 from utils.my_tools import text_splitter
-from utils.messaging_utils import send_message, send_template_message
+from utils.messaging_utils import send_message, send_template_message, send_pdf_message
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
 from services.google_slides.slides_generator import GoogleSlidesGenerator
 from dotenv import load_dotenv
 from pathlib import Path
 from classes.CustomDictClass import ActiveUserDictionary
-from prompts import PROMPT_TEMPLATES, STANDARD_PROMPTS
+from prompts.report_templates import REPORT_TEMPLATES
+from prompts.standard_prompts import PROMPT_TEMPLATES
 
 # Set up minimal logging
 logging.basicConfig(
@@ -100,7 +101,48 @@ def handle_message():
     elif user_states[sender]['step'] == 'list_selection':
         company_name = user_states[sender]['company_name']
         
-        if incoming_msg in STANDARD_PROMPTS:
+        if incoming_msg.lower() == 'report':
+            try:
+                # Send waiting message first
+                send_message(client, sender, "Please wait a minute while your report is being generated...")
+                
+                # Generate report data
+                report_data = {
+                    'company_name': company_name
+                }
+                
+                # Generate content for each section
+                for template_name, template in REPORT_TEMPLATES.items():
+                    prompt = template.format(company_name=company_name)
+                    response = generate_response(prompt, company_name, vectorstore)
+                    report_data[template_name] = response
+                
+                # Generate the PDF
+                pdf_response = slides_generator.create_report(report_data)
+                
+                # Save locally
+                if not os.path.exists('test_reports'):
+                    os.makedirs('test_reports')
+                output_path = f'test_reports/{company_name}_analysis.pdf'
+                with open(output_path, 'wb') as f:
+                    f.write(pdf_response)
+                
+                # Store in Supabase and get URL
+                pdf_url = slides_generator.store_pdf_link(pdf_response)
+                
+                # Send PDF via WhatsApp
+                send_pdf_message(
+                    client, 
+                    sender,
+                    pdf_url,
+                    f"Here's your analysis report for {company_name}"
+                )
+                
+            except Exception as e:
+                logger.error(f"Error generating report: {str(e)}")
+                send_message(client, sender, "I apologize, but I encountered an error generating the report. Please try again.")
+            
+        elif incoming_msg in STANDARD_PROMPTS:
             try:
                 prompt = PROMPT_TEMPLATES[incoming_msg].format(company_name=company_name)
                 response = generate_response(prompt, company_name, vectorstore)

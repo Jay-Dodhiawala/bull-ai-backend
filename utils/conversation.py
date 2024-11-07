@@ -12,6 +12,7 @@ from langchain.retrievers.document_compressors import LLMChainExtractor
 from dotenv import load_dotenv
 import os
 
+from prompts.report_templates import REPORT_TEMPLATES
 from prompts import PROMPT_TEMPLATES
 from classes.supabase_data_retriver import SecurityDataRetriever
 

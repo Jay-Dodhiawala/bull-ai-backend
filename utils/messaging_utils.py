@@ -27,3 +27,17 @@ def send_template_message(client, to, template_sid, parameters=None):
         print(f"Error sending template message: {str(e)}")
         # Send a generic error message instead of the options
         return send_message(client, to, "I apologize for the technical difficulty. Please try your request again.")
+
+def send_pdf_message(client, to, pdf_url, caption="Here's your company analysis report"):
+    """Send a PDF document via WhatsApp"""
+    try:
+        message = client.messages.create(
+            media_url=[pdf_url],
+            body=caption,
+            from_='whatsapp:+14155238886',
+            to=to
+        )
+        return message.sid
+    except Exception as e:
+        print(f"Error sending PDF message: {str(e)}")
+        return send_message(client, to, "I apologize, but I couldn't send the PDF report. Please try again.")
