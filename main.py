@@ -142,7 +142,7 @@ def handle_message():
                 logger.error(f"Error generating report: {str(e)}")
                 send_message(client, sender, "I apologize, but I encountered an error generating the report. Please try again.")
             
-        elif incoming_msg in STANDARD_PROMPTS:
+        elif incoming_msg in PROMPT_TEMPLATES:
             try:
                 prompt = PROMPT_TEMPLATES[incoming_msg].format(company_name=company_name)
                 response = generate_response(prompt, company_name, vectorstore)
